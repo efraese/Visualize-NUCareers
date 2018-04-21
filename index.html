@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Visualize NUCareers</title>
+  <meta name="viewport" content="initial-scale=1.0">
+  <meta charset="utf-8">
+  <style>
+    /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+
+    #map {
+      height: 400px;
+      width: 100%;
+    }
+
+    /* Optional: Makes the sample page fill the window. */
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 align="center">Visualizing NUCareers</h1>
+  <h4 align="center">Click on a marker to see jobs at that location</h4>
+
+  <div id="map"></div>
+  <script>
+    var map;
+
+    function initMap() {
+      var options = {
+        center: {
+          lat: 42.3601,
+          lng: -71.0589
+        },
+        zoom: 6
+      }
+      //creates new map
+      map = new google.maps.Map(document.getElementById('map'), options);
+
+      //array of markers
+      var markers = [{
+        coordinates: {
+          lat: 42.3601,
+          lng: -71.0589
+        },
+        content: 'Boston',
+        amount: '1'
+      }];
+
+      //load in location data
+      var locations = function() {
+        var loc = null;
+        $.ajax({
+          url: "locationdata.csv",
+          dataType: "text",
+          async: false,
+          success: function(data) {
+            loc = $.csv.toArrays(data);
+          }
+        });
+        return loc;
+      }();
+      var latlong;
+      var locationName;
+      var amount;
+      var marker;
+      var index;
+      var lat;
+      var long;
+      var clickedLoc;
+      //dont want heading so start at index 1
+      for (var j = 1; j < locations.length; j++) {
+        amount = locations[j][1].toString();
+        locationName = String(locations[j][0]);
+        latlong = String(locations[j][2]);
+        index = latlong.indexOf("lng");
+        lat = parseFloat(latlong.substring(4, index - 1))
+        long = parseFloat(latlong.substring(index + 5));
+        latlong = new google.maps.LatLng(lat, long);
+        marker = {
+          coordinates: latlong,
+          content: locationName,
+          amount: amount
+        }
+        markers.push(marker);
+      }
+
+      //loop through and add markers from array
+      for (var i = 0; i < locations.length; i++) {
+        addMarker(markers[i]);
+      }
+
+      var infoWindow = new google.maps.InfoWindow();
+
+      //Adds marker to map based on given properties
+      function addMarker(properties) {
+        var marker = new google.maps.Marker({
+          position: properties.coordinates,
+          label: {
+            text: properties.amount,
+            color: 'black'
+          },
+          map: map
+        });
+
+        //create info window for all markers
+        google.maps.event.addListener(marker, 'click', function(e) {
+          infoWindow.setContent('<h1>' + properties.content + '</h1>');
+          infoWindow.open(map, this);
+          clickedLoc = properties.content.split(":")[0];
+          $('#employee_table').html(showJobs(jobData.filter(filterByCity)));
+        });
+      }
+
+      //load in job data
+      var jobData = function() {
+        var jobs = null;
+        $.ajax({
+          url: "jobdata.csv",
+          dataType: "text",
+          async: false,
+          success: function(data) {
+            jobs = $.csv.toArrays(data);
+          }
+        });
+        return jobs;
+      }();
+
+      //table headers
+      var headers = ["Job Title", "Company Name", "State", "City"];
+
+      //filter job data by location name
+      function filterByCity(data) {
+        locName = data[3] + " " + data[2];
+        return locName == clickedLoc;
+      }
+
+      //displays table below map
+      function showJobs(data) {
+        data.unshift(headers);
+        var result = '<table class="table table-bordered table-striped">';
+        for (var i = 0; i < data.length; i++) {
+          result += "<tr>";
+          for (var j = 0; j < data[1].length - 1; j++) {
+            if (j == 0 && i != 0) {
+              result += "<td>" + "<a href=" + data[i][4] + ">" + data[i][j] + "</a></td>";
+            } else {
+              result += "<td>" + data[i][j] + "</td>";
+            }
+          }
+          result += "</tr>";
+        }
+        result += "</table>";
+        return result;
+      }
+    }
+  </script>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" />
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCltq8hY_AlFSdrlXFxnzHbssDkuofUEgw&callback=initMap" async defer></script>
+  <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+  <script src="http://code.jquery.com/ui/1.9.0/jquery-ui.js"></script>
+  <script src="http://evanplaice.github.io/jquery-csv/src/jquery.csv.js"></script>
+
+  <div id="employee_table"></div>
+</body>
+
+</html>
